@@ -44,11 +44,12 @@ func NewIsulogger(endpoint, appID string) (*Isulogger, error) {
 
 // Send はログを送信します
 func (b *Isulogger) Send(tag string, data interface{}) error {
-	return b.request("/send", Log{
+	go b.request("/send", Log{
 		Tag:  tag,
 		Time: time.Now(),
 		Data: data,
 	})
+	return nil
 }
 
 func (b *Isulogger) request(p string, v interface{}) error {
