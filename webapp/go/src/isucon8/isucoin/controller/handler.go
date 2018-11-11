@@ -59,6 +59,12 @@ func (h *Handler) Initialize(w http.ResponseWriter, r *http.Request, _ httproute
 	} else {
 		h.handleSuccess(w, struct{}{})
 	}
+
+	arr, _ := model.GetCandlestickData(h.db, byMinTime, "%Y-%m-%d %H:%i:%s")
+
+	for _, v := range arr {
+		model.CandleSec.Store(v)
+	}
 }
 
 func (h *Handler) Signup(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
