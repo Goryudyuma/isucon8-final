@@ -91,7 +91,6 @@ func (h *Handler) Initialize(w http.ResponseWriter, r *http.Request, _ httproute
 		for _, x := range data {
 			v.c.Store(x)
 		}
-		fmt.Println(v.a, len(v.c.Range(v.d)), len(data))
 	}
 }
 
