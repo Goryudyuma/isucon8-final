@@ -3,9 +3,11 @@ package controller
 import (
 	"context"
 	"database/sql"
+	"encoding/gob"
 	"encoding/json"
 	"log"
 	"net/http"
+	"os"
 	"strconv"
 	"time"
 
@@ -59,14 +61,34 @@ func (h *Handler) Initialize(w http.ResponseWriter, r *http.Request, _ httproute
 	} else {
 		h.handleSuccess(w, struct{}{})
 	}
-
-	arr, err := model.GetCandlestickData(h.db, time.Unix(0, 0), "%Y-%m-%d %H:%i:%s")
-	if err != nil {
-		panic(err)
-	}
-
-	for _, v := range arr {
-		model.CandleSec.Store(v)
+	for _, v := range []struct {
+		a, b string
+		c    model.CandleMap
+	}{
+		{a: "sec", b: "%H:%i:%s", c: model.CandleSec},
+		{a: "min", b: "%H:%i:00", c: model.CandleMin},
+		{a: "hour", b: "%H:00:00", c: model.CandleHour},
+	} {
+		f, err := os.OpenFile("/go/src/isucon8/trade_"+v.a+".gob", os.O_RDWR|os.O_CREATE, 0644)
+		if err != nil {
+			panic(err)
+		}
+		dec := gob.NewDecoder(f)
+		var data []*model.CandlestickData
+		if err := dec.Decode(&data); err != nil {
+			log.Println(err)
+			data, err = model.GetCandlestickData(h.db, time.Unix(0, 0), "%Y-%m-%d "+v.b)
+			if err != nil {
+				panic(err)
+			}
+			enc := gob.NewEncoder(f)
+			if err := enc.Encode(data); err != nil {
+				panic(err)
+			}
+		}
+		for _, x := range data {
+			v.c.Store(x)
+		}
 	}
 }
 
