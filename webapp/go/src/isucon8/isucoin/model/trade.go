@@ -37,17 +37,22 @@ var (
 type CandleMap sync.Map
 
 func (m *CandleMap) Load(t time.Time) (*CandlestickData, bool) {
-	v, ok := sync.Map(m).Load(t)
+	v, ok := (*sync.Map)(m).Load(t)
 	return v.(*CandlestickData), ok
+}
+
+func (m *CandleMap) Store(c *CandlestickData) {
+	(*sync.Map)(m).Store(c.Time, c)
 }
 
 func (m *CandleMap) Range(t time.Time) (data []*CandlestickData) {
 	for i := 0; i < 300; i++ {
-		v, ok := m.Load(t.Add(i * time.Second))
+		v, ok := m.Load(t.Add(time.Duration(i) * time.Second))
 		if !ok {
 			continue
 		}
-		data = append(data, v.(*CandlestickData))
+		d := (*CandlestickData)(v)
+		data = append(data, d)
 	}
 	return
 }
@@ -57,7 +62,7 @@ func GetTradeByID(d QueryExecutor, id int64) (*Trade, error) {
 }
 
 func GetLatestTrade(d QueryExecutor) (*Trade, error) {
-	return scanTrade(d.Query("SELECT * FROM trade ORDER BY id DESC limit 1"))
+	return scanTrade(d.Query("SELECT * FROM trade ORDER BY id DESC"))
 }
 
 func GetCandlestickData(d QueryExecutor, mt time.Time, tf string) ([]*CandlestickData, error) {
@@ -164,10 +169,10 @@ func commitReservedOrder(tx *sql.Tx, order *Order, targets []*Order, reserves []
 	if candle.High < order.Price {
 		candle.High = order.Price
 	}
-	if candle.Low > order.Low {
-		candle.Low = order.Low
+	if candle.Low > order.Price {
+		candle.Low = order.Price
 	}
-	CandleSec.Store(now, candle)
+	CandleSec.Store(candle)
 
 	res, err := tx.Exec(`INSERT INTO trade (amount, price, created_at) VALUES (?, ?, NOW(6))`, order.Amount, order.Price)
 	if err != nil {
