@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"encoding/gob"
 	"encoding/json"
-	"fmt"
 	"log"
 	"net/http"
 	"os"
