@@ -48,7 +48,8 @@ func (m *CandleMap) Store(c *CandlestickData) {
 	(*sync.Map)(m).Store(c.Time, c)
 }
 
-func (m *CandleMap) Range(t time.Time) (data []*CandlestickData) {
+func (m *CandleMap) Range(t time.Time) []*CandlestickData {
+	data := make(*CandlestickData, 0)
 	for i := 0; i < 300; i++ {
 		v, ok := m.Load(t.Add(time.Duration(i) * time.Second))
 		if !ok {
@@ -57,7 +58,7 @@ func (m *CandleMap) Range(t time.Time) (data []*CandlestickData) {
 		d := (*CandlestickData)(v)
 		data = append(data, d)
 	}
-	return
+	return data
 }
 
 func GetTradeByID(d QueryExecutor, id int64) (*Trade, error) {
