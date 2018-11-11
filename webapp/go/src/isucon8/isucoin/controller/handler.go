@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/gob"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -61,26 +62,36 @@ func (h *Handler) Initialize(w http.ResponseWriter, r *http.Request, _ httproute
 	} else {
 		h.handleSuccess(w, struct{}{})
 	}
-
-	f, err := os.OpenFile("/go/src/isucon8/trade_sec.gob", os.O_RDWR|os.O_CREATE, 0644)
-	if err != nil {
-		panic(err)
-	}
-	dec := gob.NewDecoder(f)
-	var data []*model.CandlestickData
-	if err := dec.Decode(&data); err != nil {
-		log.Println(err)
-		data, err = model.GetCandlestickData(h.db, time.Unix(0, 0), "%Y-%m-%d %H:%i:%s")
+	for _, v := range []struct {
+		a, b string
+		c    *model.CandleMap
+		d    time.Time
+	}{
+		{a: "sec", b: "%H:%i:%s", c: &model.CandleSec, d: BaseTime.Add(-300 * time.Second)},
+		{a: "min", b: "%H:%i:00", c: &model.CandleMin, d: BaseTime.Add(-300 * time.Minute)},
+		{a: "hour", b: "%H:00:00", c: &model.CandleHour, d: BaseTime.Add(-48 * time.Hour)},
+	} {
+		f, err := os.OpenFile("/go/src/isucon8/trade_"+v.a+".gob", os.O_RDWR|os.O_CREATE, 0644)
 		if err != nil {
 			panic(err)
 		}
-		enc := gob.NewEncoder(f)
-		if err := enc.Encode(data); err != nil {
-			panic(err)
+		dec := gob.NewDecoder(f)
+		var data []*model.CandlestickData
+		if err := dec.Decode(&data); err != nil {
+			log.Println(err)
+			data, err = model.GetCandlestickData(h.db, v.d, "%Y-%m-%d "+v.b)
+			if err != nil {
+				panic(err)
+			}
+			enc := gob.NewEncoder(f)
+			if err := enc.Encode(data); err != nil {
+				panic(err)
+			}
 		}
-	}
-	for _, v := range data {
-		model.CandleSec.Store(v)
+		for _, x := range data {
+			v.c.Store(x)
+		}
+		fmt.Println(v.a, len(v.c.Range(v.d)), len(data))
 	}
 }
 
@@ -197,19 +208,27 @@ func (h *Handler) Info(w http.ResponseWriter, r *http.Request, _ httprouter.Para
 	if lt.After(bySecTime) {
 		bySecTime = time.Date(lt.Year(), lt.Month(), lt.Day(), lt.Hour(), lt.Minute(), lt.Second(), 0, lt.Location())
 	}
-	res["chart_by_sec"] = model.CandleSec.Range(bySecTime.Round(time.Second), 300, time.Second)
+	res["chart_by_sec"] = model.CandleSec.Range(bySecTime.Round(time.Second))
 
 	byMinTime := BaseTime.Add(-300 * time.Minute)
 	if lt.After(byMinTime) {
 		byMinTime = time.Date(lt.Year(), lt.Month(), lt.Day(), lt.Hour(), lt.Minute(), 0, 0, lt.Location())
 	}
-	res["chart_by_min"] = model.CandleMin.Range(byMinTime.Round(time.Minute), 300, time.Minute)
+	res["chart_by_min"], err = model.GetCandlestickData(h.db, byMinTime, "%Y-%m-%d %H:%i:00")
+	if err != nil {
+		h.handleError(w, errors.Wrap(err, "model.GetCandlestickData by min"), 500)
+		return
+	}
 
 	byHourTime := BaseTime.Add(-48 * time.Hour)
 	if lt.After(byHourTime) {
 		byHourTime = time.Date(lt.Year(), lt.Month(), lt.Day(), lt.Hour(), 0, 0, 0, lt.Location())
 	}
-	res["chart_by_hour"] = model.CandleHour.Range(byHourTime.Round(time.Hour), 48, time.Hour)
+	res["chart_by_hour"], err = model.GetCandlestickData(h.db, byHourTime, "%Y-%m-%d %H:00:00")
+	if err != nil {
+		h.handleError(w, errors.Wrap(err, "model.GetCandlestickData by hour"), 500)
+		return
+	}
 
 	lowestSellOrder, err := model.GetLowestSellOrder(h.db)
 	switch {

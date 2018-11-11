@@ -48,10 +48,10 @@ func (m *CandleMap) Store(c *CandlestickData) {
 	(*sync.Map)(m).Store(c.Time, c)
 }
 
-func (m *CandleMap) Range(t time.Time, count int, interval time.Duration) []*CandlestickData {
+func (m *CandleMap) Range(t time.Time) []*CandlestickData {
 	data := make([]*CandlestickData, 0)
-	for i := 0; i < count; i++ {
-		v, ok := m.Load(t.Add(time.Duration(i) * interval))
+	for i := 0; i < 300; i++ {
+		v, ok := m.Load(t.Add(time.Duration(i) * time.Second))
 		if !ok {
 			continue
 		}
@@ -158,34 +158,25 @@ func reserveOrder(d QueryExecutor, order *Order, price int64) (int64, error) {
 }
 
 func commitReservedOrder(tx *sql.Tx, order *Order, targets []*Order, reserves []int64) error {
+	now := time.Now().Round(time.Second)
 
-	for _, v := range []struct {
-		m *CandleMap
-		i time.Duration
-	}{
-		{m: &CandleSec, i: time.Second},
-		{m: &CandleMin, i: time.Minute},
-		{m: &CandleHour, i: time.Hour},
-	} {
-		now := time.Now().Round(v.i)
-		candle, ok := v.m.Load(now)
-		if !ok {
-			candle = &CandlestickData{
-				Time: now,
-				Open: order.Price,
-				High: order.Price,
-				Low:  order.Price,
-			}
+	candle, ok := CandleSec.Load(now)
+	if !ok {
+		candle = &CandlestickData{
+			Time: now,
+			Open: order.Price,
+			High: order.Price,
+			Low:  order.Price,
 		}
-		candle.Close = order.Price
-		if candle.High < order.Price {
-			candle.High = order.Price
-		}
-		if candle.Low > order.Price {
-			candle.Low = order.Price
-		}
-		v.m.Store(candle)
 	}
+	candle.Close = order.Price
+	if candle.High < order.Price {
+		candle.High = order.Price
+	}
+	if candle.Low > order.Price {
+		candle.Low = order.Price
+	}
+	CandleSec.Store(candle)
 
 	res, err := tx.Exec(`INSERT INTO trade (amount, price, created_at) VALUES (?, ?, NOW(6))`, order.Amount, order.Price)
 	if err != nil {
