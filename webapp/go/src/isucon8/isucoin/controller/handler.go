@@ -60,7 +60,10 @@ func (h *Handler) Initialize(w http.ResponseWriter, r *http.Request, _ httproute
 		h.handleSuccess(w, struct{}{})
 	}
 
-	arr, _ := model.GetCandlestickData(h.db, time.Unix(0, 0), "%Y-%m-%d %H:%i:%s")
+	arr, err := model.GetCandlestickData(h.db, time.Unix(0, 0), "%Y-%m-%d %H:%i:%s")
+	if err != nil {
+		panic(err)
+	}
 
 	for _, v := range arr {
 		model.CandleSec.Store(v)
