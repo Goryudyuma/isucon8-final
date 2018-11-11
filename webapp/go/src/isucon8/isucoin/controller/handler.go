@@ -82,7 +82,7 @@ func (h *Handler) Initialize(w http.ResponseWriter, r *http.Request, _ httproute
 				panic(err)
 			}
 			enc := gob.NewEncoder(f)
-			if err := enc.Encode(data); err != nil {
+			if err := enc.Encode(&data); err != nil {
 				panic(err)
 			}
 		}
