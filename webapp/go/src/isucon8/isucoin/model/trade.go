@@ -49,7 +49,7 @@ func (m *CandleMap) Store(c *CandlestickData) {
 }
 
 func (m *CandleMap) Range(t time.Time) []*CandlestickData {
-	data := make(*CandlestickData, 0)
+	data := make([]*CandlestickData, 0)
 	for i := 0; i < 300; i++ {
 		v, ok := m.Load(t.Add(time.Duration(i) * time.Second))
 		if !ok {
