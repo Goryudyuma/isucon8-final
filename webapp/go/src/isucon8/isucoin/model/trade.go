@@ -38,6 +38,9 @@ type CandleMap sync.Map
 
 func (m *CandleMap) Load(t time.Time) (*CandlestickData, bool) {
 	v, ok := (*sync.Map)(m).Load(t)
+	if !ok {
+		return nil, ok
+	}
 	return v.(*CandlestickData), ok
 }
 
