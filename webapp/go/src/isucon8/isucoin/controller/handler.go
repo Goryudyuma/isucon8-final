@@ -64,12 +64,12 @@ func (h *Handler) Initialize(w http.ResponseWriter, r *http.Request, _ httproute
 	}
 	for _, v := range []struct {
 		a, b string
-		c    model.CandleMap
+		c    *model.CandleMap
 		d    time.Time
 	}{
-		{a: "sec", b: "%H:%i:%s", c: model.CandleSec, d: BaseTime.Add(-300 * time.Second)},
-		{a: "min", b: "%H:%i:00", c: model.CandleMin, d: BaseTime.Add(-300 * time.Minute)},
-		{a: "hour", b: "%H:00:00", c: model.CandleHour, d: BaseTime.Add(-48 * time.Hour)},
+		{a: "sec", b: "%H:%i:%s", c: &model.CandleSec, d: BaseTime.Add(-300 * time.Second)},
+		{a: "min", b: "%H:%i:00", c: &model.CandleMin, d: BaseTime.Add(-300 * time.Minute)},
+		{a: "hour", b: "%H:00:00", c: &model.CandleHour, d: BaseTime.Add(-48 * time.Hour)},
 	} {
 		f, err := os.OpenFile("/go/src/isucon8/trade_"+v.a+".gob", os.O_RDWR|os.O_CREATE, 0644)
 		if err != nil {
