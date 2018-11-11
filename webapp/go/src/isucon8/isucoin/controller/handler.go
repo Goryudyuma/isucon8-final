@@ -65,10 +65,11 @@ func (h *Handler) Initialize(w http.ResponseWriter, r *http.Request, _ httproute
 	for _, v := range []struct {
 		a, b string
 		c    model.CandleMap
+		d    time.Time
 	}{
-		{a: "sec", b: "%H:%i:%s", c: model.CandleSec},
-		{a: "min", b: "%H:%i:00", c: model.CandleMin},
-		{a: "hour", b: "%H:00:00", c: model.CandleHour},
+		{a: "sec", b: "%H:%i:%s", c: model.CandleSec, d: BaseTime.Add(-300 * time.Second)},
+		{a: "min", b: "%H:%i:00", c: model.CandleMin, d: BaseTime.Add(-300 * time.Minute)},
+		{a: "hour", b: "%H:00:00", c: model.CandleHour, d: BaseTime.Add(-48 * time.Hour)},
 	} {
 		f, err := os.OpenFile("/go/src/isucon8/trade_"+v.a+".gob", os.O_RDWR|os.O_CREATE, 0644)
 		if err != nil {
@@ -78,7 +79,7 @@ func (h *Handler) Initialize(w http.ResponseWriter, r *http.Request, _ httproute
 		var data []*model.CandlestickData
 		if err := dec.Decode(&data); err != nil {
 			log.Println(err)
-			data, err = model.GetCandlestickData(h.db, time.Unix(0, 0), "%Y-%m-%d "+v.b)
+			data, err = model.GetCandlestickData(h.db, v.d, "%Y-%m-%d "+v.b)
 			if err != nil {
 				panic(err)
 			}
@@ -90,7 +91,7 @@ func (h *Handler) Initialize(w http.ResponseWriter, r *http.Request, _ httproute
 		for _, x := range data {
 			v.c.Store(x)
 		}
-		fmt.Println(v.a, len(v.c.Range(time.Unix(0, 0))), len(data))
+		fmt.Println(v.a, len(v.c.Range(v.d)), len(data))
 	}
 }
 
