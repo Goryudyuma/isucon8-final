@@ -68,7 +68,7 @@ func (h *Handler) Initialize(w http.ResponseWriter, r *http.Request, _ httproute
 	}
 	dec := gob.NewDecoder(f)
 	var data []*model.CandlestickData
-	if err := dec.Decode(data); err != nil {
+	if err := dec.Decode(&data); err != nil {
 		log.Println(err)
 		data, err = model.GetCandlestickData(h.db, time.Unix(0, 0), "%Y-%m-%d %H:%i:%s")
 		if err != nil {
