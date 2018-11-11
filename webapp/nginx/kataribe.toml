@@ -60,3 +60,11 @@ name = "stylesheets"
 [[bundle]]
 regexp = '^(GET|HEAD) /images/'
 name = "images"
+
+[[bundle]]
+regexp = '^GET /info\?cursor=\d+'
+name = "GET /info?cursor=:cursor"
+
+[[bundle]]
+regexp = '^DELETE /order/\d+'
+name = "DELETE /order/:id"
