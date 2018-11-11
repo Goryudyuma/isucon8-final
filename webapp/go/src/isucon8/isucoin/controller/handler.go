@@ -3,9 +3,11 @@ package controller
 import (
 	"context"
 	"database/sql"
+	"encoding/gob"
 	"encoding/json"
 	"log"
 	"net/http"
+	"os"
 	"strconv"
 	"time"
 
@@ -60,12 +62,23 @@ func (h *Handler) Initialize(w http.ResponseWriter, r *http.Request, _ httproute
 		h.handleSuccess(w, struct{}{})
 	}
 
-	arr, err := model.GetCandlestickData(h.db, time.Unix(0, 0), "%Y-%m-%d %H:%i:%s")
+	f, err := os.OpenFile("/go/src/isucon8/trade_sec.gob", os.O_RDWR|os.O_CREATE, 0644)
 	if err != nil {
 		panic(err)
 	}
-
-	for _, v := range arr {
+	dec := gob.NewDecoder(f)
+	var data []*model.CandlestickData
+	if err := dec.Decode(data); err != nil {
+		data, err = model.GetCandlestickData(h.db, time.Unix(0, 0), "%Y-%m-%d %H:%i:%s")
+		if err != nil {
+			panic(err)
+		}
+		enc := gob.NewEncoder(f)
+		if err := enc.Encode(data); err != nil {
+			panic(err)
+		}
+	}
+	for _, v := range data {
 		model.CandleSec.Store(v)
 	}
 }
