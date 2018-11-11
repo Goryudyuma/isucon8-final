@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"isucon8/isubank"
 	"log"
+	"sync"
 	"time"
 
 	"github.com/pkg/errors"
@@ -25,6 +26,30 @@ type CandlestickData struct {
 	Close int64     `json:"close"`
 	High  int64     `json:"high"`
 	Low   int64     `json:"low"`
+}
+
+var (
+	CandleSec  CandleMap
+	CandleMin  CandleMap
+	CandleHour CandleMap
+)
+
+type CandleMap sync.Map
+
+func (m *CandleMap) Load(t time.Time) (*CandlestickData, bool) {
+	v, ok := sync.Map(m).Load(t)
+	return v.(*CandlestickData), ok
+}
+
+func (m *CandleMap) Range(t time.Time) (data []*CandlestickData) {
+	for i := 0; i < 300; i++ {
+		v, ok := m.Load(t.Add(i * time.Second))
+		if !ok {
+			continue
+		}
+		data = append(data, v.(*CandlestickData))
+	}
+	return
 }
 
 func GetTradeByID(d QueryExecutor, id int64) (*Trade, error) {
@@ -124,6 +149,26 @@ func reserveOrder(d QueryExecutor, order *Order, price int64) (int64, error) {
 }
 
 func commitReservedOrder(tx *sql.Tx, order *Order, targets []*Order, reserves []int64) error {
+	now := time.Now().Round(time.Second)
+
+	candle, ok := CandleSec.Load(now)
+	if !ok {
+		candle = &CandlestickData{
+			Time: now,
+			Open: order.Price,
+			High: order.Price,
+			Low:  order.Price,
+		}
+	}
+	candle.Close = order.Price
+	if candle.High < order.Price {
+		candle.High = order.Price
+	}
+	if candle.Low > order.Low {
+		candle.Low = order.Low
+	}
+	CandleSec.Store(now, candle)
+
 	res, err := tx.Exec(`INSERT INTO trade (amount, price, created_at) VALUES (?, ?, NOW(6))`, order.Amount, order.Price)
 	if err != nil {
 		return errors.Wrap(err, "insert trade")
