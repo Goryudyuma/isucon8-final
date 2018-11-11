@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/gob"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -89,6 +90,7 @@ func (h *Handler) Initialize(w http.ResponseWriter, r *http.Request, _ httproute
 		for _, x := range data {
 			v.c.Store(x)
 		}
+		fmt.Println(v.a, len(v.c.Range(time.Unix(0, 0))))
 	}
 }
 
